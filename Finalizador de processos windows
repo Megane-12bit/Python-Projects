@@ -1,0 +1,7 @@
+import os
+os.system('tasklist')
+
+proces = (input('Digite o numero do processo: '))
+os.system('tskill {}' .format(proces))
+
+#Encerra processo no windows mas com a lógica pode ser adaptado para linux 
