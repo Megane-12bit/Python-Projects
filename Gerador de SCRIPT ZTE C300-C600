@@ -1,0 +1,194 @@
+import PySimpleGUI as sg
+import keyboard
+vlan = ''
+sg.theme('DarkGreen')
+layout = [
+    [sg.Text('Código: '),sg.Input(key='codigo')],
+    [sg.Text(' Pppoe :'),sg.Input(key='pppoe')],
+    [sg.Text(' Senha :'),sg.Input(key='senha')],
+    [sg.Text('Nª cto :',size=6),sg.Input(key='cto')],
+    [sg.Text('🌫'*45)],
+    
+    [
+    # MENU DAS OLTS
+    sg.Text('',key='mensagem'),
+    sg.Text('OLT: '),sg.Combo(["DR FABIO","NOVA VG","ELDORADO","NOVO PARAISO","CHAPADA","BARRA DO BUGRES","TARUMÃ","COLINAS VERDEJANTES","ACORIZAL","DISTRITO GUIA"],key='olts'),
+    sg.Text('',key = 'olt_escolha'),
+    sg.Text('Tipo de script: '),sg.Combo(["C300","C600","C300 EVENTO/ICORPORATE","C600 EVENTO/ICORPORATE","C300 INTERCONECT", "C600 INTERCONECT"],key='tipscript')
+    ],
+    # MENSAGEM.USABILIDADE
+    [sg.Text('🌫'*45)],
+    [sg.Text('Interface 1/x/x:x',size=10), sg.Input(key='interface')],
+    [sg.Text('Posição:',size=10), sg.Input(key='posicao')],
+    [sg.Text('Serial:',size=10), sg.Input(key='serial')],
+
+    #Botão gerar
+    [
+        [sg.Button('GERAR')],
+    ],
+]
+
+janela = sg.Window('ZTE SCRIPT GENERATORv2', layout=layout)
+
+
+
+while True: 
+    event, Values = janela.read()
+    if event == sg.WIN_CLOSED:
+        break
+    elif event == 'GERAR':
+        OLT_escolhida = Values['olts']# Recebendo OLT ESCOLHIDA EM STR
+        tipo_script = Values['tipscript']   # Recebendo TiPO DO SCRIPT
+        codigo = Values['codigo'] 
+        pppoe = Values['pppoe'] #   Recebendo pppoe
+        senha = Values['senha']
+        cto = Values['cto']
+        serial = Values['serial']
+        interface = Values['interface']
+        posicao = Values['posicao']
+        scriptie_codlog = (codigo + '-' + pppoe + '-' + cto)
+
+        #analisa VLAN
+        if Values['olts'] == 'DR FABIO':
+            vlan = '190'
+        elif Values['olts'] == 'NOVA VG':
+            vlan = '232'
+        elif Values['olts']== 'ELDORADO':
+            vlan = '259'    
+        elif Values['olts'] == 'NOVO PARAISO':
+            vlan = '134'
+        elif Values['olts'] == 'CHAPADA':
+            vlan = '47'
+        elif Values['olts'] == 'BARRA DO BUGRES':
+            vlan = '219'
+        elif Values['olts'] == 'TARUMÃ':
+            vlan = '223'
+        elif Values['olts'] == 'COLINAS VERDEJANTES':
+            vlan = '228'
+        elif Values['olts'] == 'ACORIZAL':
+            vlan = ('215')
+        elif Values['olts'] == 'DISTRITO GUIA':
+            vlan = ('216')   
+        #analisa VLAN
+        comparador_c300 = ("DR FABIO","NOVA VG","ELDORADO","CHAPADA","BARRA DO BUGRES","TARUMÃ","ACORIZAL","DISTRITO GUIA")
+        comparador_c600 = ("NOVO PARAISO","COLINAS VERDEJANTES")
+        
+        if tipo_script =='C300':
+            for i in range(len(comparador_c300)):
+                if Values['olts'] == comparador_c300[i]:
+                   with open("ZTE C300 RESIDENCIAL.txt", "w",) as arquivo:        #Escreve num arquivo C300 normal
+                        texto = arquivo.write(f'''
+conf t
+interface gpon-olt_1/{interface}
+onu {posicao} type F680 sn {serial}
+exit
+interface gpon-onu_1/{interface}:{posicao}
+name  {scriptie_codlog}
+tcont 1 profile DADOS
+gemport 1 tcont 1
+service-port 1 vport 1 user-vlan {vlan} vlan {vlan}
+exit   
+pon-onu-mng gpon-onu_1/{interface}:{posicao}
+name {scriptie_codlog[0:16]}
+service 1 gemport 1 vlan {vlan}
+wan-ip 1 mode pppoe username {pppoe} password {senha} vlan-profile {vlan}  
+security-mgmt 1 state enable ingress-type lan protocol web
+security-mgmt 2 state enable mode forward protocol web
+security-mgmt 2 start-src-ip 177.67.192.0 end-src-ip 177.67.192.254
+security-mgmt 3 state enable mode forward protocol web
+security-mgmt 3 start-src-ip 10.0.0.0 end-src-ip 10.254.254.254
+firewall enable level low
+                     ''')
+                        arquivo.close()
+        elif tipo_script == 'C600':
+            for j in range(len(comparador_c600)):
+                if Values['olts'] == comparador_c600[j]:
+                    with open ('ZTE C600 RESIDENCIAL.txt', "w",) as arquivo:      #Escreve num arquivo C600 normal
+                        texto = arquivo.write(f'''
+conf t
+interface gpon_olt-1/{interface}
+onu {posicao} type F680 sn {serial}
+exit
+interface gpon_onu-1/{interface}:{posicao})
+name {scriptie_codlog}
+tcont 1 profile DADOS
+gemport 1 tcont 1
+exit
+interface vport-1/{interface}.{posicao}:1
+service-port 1 user-vlan {vlan} vlan {vlan}
+exit
+pon-onu-mng gpon_onu-1/{interface}:{posicao}
+service 1 gemport 1 vlan {vlan})
+wan-ip ipv4 mode pppoe username {pppoe} password {senha} vlan-profile {vlan} host 1
+security-mgmt 1 state enable ingress-type lan protocol web
+security-mgmt 2 state enable mode forward protocol web
+security-mgmt 2 start-src-ip 177.67.192.0 end-src-ip 177.67.192.254
+security-mgmt 3 state enable mode forward protocol web
+security-mgmt 3 start-src-ip 10.0.0.0 end-src-ip 10.254.254.254
+firewall enable level low                        
+                        ''')
+                        arquivo.close()
+        elif tipo_script == 'C300 EVENTO/ICORPORATE':
+            for i in range(len(comparador_c300)):
+                if Values['olts'] == comparador_c300[i]:
+                    with open ('ZTE C300 Event&Icorp') as arquivo:                #Escreve num arquivo C300 EVENTO
+                        texto = arquivo.write(f'''
+conf t
+interface gpon-olt_1/{interface}
+onu {posicao} type F680 sn {serial}
+exit
+interface gpon-onu_1/{interface}:{posicao}
+name {scriptie_codlog}
+tcont 1 profile DADOS
+gemport 1 tcont 1
+service-port 1 vport 1 user-vlan {vlan} vlan {vlan} 
+exit')   
+pon-onu-mng gpon-onu_1/{interface}:{posicao}
+name {scriptie_codlog[0:16]}
+service 1 gemport 1 vlan {vlan} 
+vlan port eth_0/1 mode tag vlan {vlan}
+security-mgmt 1 state enable ingress-type lan protocol web
+wifi disable
+                        ''')
+                        arquivo.close()
+        elif tipo_script == 'C600 EVENTO/ICORPORATE':
+            for j in range(len(comparador_c600)):
+                if Values['olts'] == comparador_c600[j]:                          
+                    with open('ZTE C600 EVENTO.txt', "w") as arquivo:             #Escreve num arquivo C600 EVENTO
+                        texto = arquivo.write(f'''
+conf t
+interface gpon_olt-1/{interface}
+onu {posicao} type F680 sn serial
+exit
+interface gpon_onu-1/{interface}:{posicao}
+name {scriptie_codlog}
+tcont 1 profile DADOS
+gemport 1 tcont 1
+exit
+interface vport-1/{interface}.{posicao}:1
+service-port 1 user-vlan {vlan} vlan {vlan} 
+exit
+pon-onu-mng gpon_onu-1/{interface}:{posicao}
+service 1 gemport 1 vlan {vlan} 
+vlan port eth_0/1 mode tag vlan {vlan}
+security-mgmt 1 state enable ingress-type lan protocol web
+wifi disable
+                        
+                        ''')
+                        arquivo.close()
+        elif tipo_script == 'C300 INTERCONECT':
+            print('Emteste c300 inter')
+        elif tipo_script == 'C600 INTERCONECT':      
+            print('Emteste c600 inter')
+
+print('Precione X para fechar. ')
+keyboard.wait('X')
+
+        
+    
+
+
+
+   
+    
+    
